@@ -41,8 +41,8 @@
 */
 
 const int PREFIX_IT_IS[] = {113,94,74,73,-1};                    // IT IS
-const int INFIX_BEFORE[] = {109,98,89,78,-1};                   // PAST
-const int INFIX_AFTER[] = {17,10,-1};                           // TO
+const int INFIX_BEFORE[] = {17,10,-1};                           // TO
+const int INFIX_AFTER[] = {109,98,89,78,-1};                   // PAST 
 const int MINUTE_FIVE[] = {51,36,31,16,-1};                    // FIVE
 const int MINUTE_TEN[] = {57,50,37,-1};                        // TEN
 const int MINUTE_QUARTER[] = {92,75,72,55,52,35,32,-1};        // QUARTER
