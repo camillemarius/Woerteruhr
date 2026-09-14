@@ -6,7 +6,7 @@
 WS2812::WS2812(int ledcnt)
 {
   led_cnt = ledcnt;
-  strip = new Adafruit_NeoPixel(ledcnt, D1, NEO_GRB + NEO_KHZ800);
+  strip = new Adafruit_NeoPixel(ledcnt, LED_PIN, NEO_GRB + NEO_KHZ800);
   prevPixelColors = new bool[ledcnt];
   actualPixelColors = new bool[ledcnt];
 
