@@ -1,6 +1,7 @@
  #ifndef BERNDEUTSCH_H
  #define BERNDEUTSCH_H
-
+ 
+ #define LANGUAGE_GERMAN
  /*      -                  0- 5
         FÜÜF AB             5-10
         ZÄÄ AB             10-15

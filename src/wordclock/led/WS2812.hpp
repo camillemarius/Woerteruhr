@@ -37,7 +37,7 @@ class WS2812
         bool *prevPixelColors;
         bool *actualPixelColors;
 
-        #define LED_PIN D1 //GPIO5
+        #define LED_PIN D4 //GPIO5
         int led_cnt;
         int brightness;
 

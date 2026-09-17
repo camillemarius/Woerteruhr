@@ -1,44 +1,33 @@
-#ifndef SwissTime_HPP
-#define SwissTime_HPP
+#ifndef SWISS_TIME_HPP
+#define SWISS_TIME_HPP
 
-#include "Arduino.h"
-#include <WiFiUdp.h>
-#include <ESP8266WiFi.h>
-#include "WifiHost.hpp"
+#include <Arduino.h>
+#include <time.h>
+
 
 class SwissTime
 {
-    public:
-        SwissTime();
-        bool getTime();
-        bool getTimeFromWifi();  
-        bool getTimeFromLocalCounter();
-        void awaitNextMinuteBoundary(void);
-               
-    public:
-        uint32_t  h, m, s;
+public:
 
-    private:
-        #define MY_NTP_SERVER "at.pool.ntp.org"       
-        #define MY_TZ "CET-1CEST,M3.5.0/02,M10.5.0/03"  
+    SwissTime();
+    
 
-        int wakeupdelay_cnt;
-        int awakeCountPerDay;
-        int reconnectionMinuteTime;
-        bool wifiTimeError;
-        bool initializied;
-        int wakeupdelay_ms;
-        int configPortalTimeout;
-        int connectTimeout;
+    // Aktuelle System-/NTP-Zeit lesen
+    //
+    // false = erfolgreich
+    // true  = Fehler
+    bool getTime();
+    void awaitNextMinuteBoundary();
 
-        time_t now;
-        tm tm_data;
-        WifiHost wifi;
-
- 
+    int s;
+    int m;
+    int h;
 
 
-        
+private:
+
+    time_t now;
+    struct tm tm_data;
 };
 
 #endif
