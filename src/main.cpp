@@ -1,10 +1,8 @@
 #include <Arduino.h>
-
 #include <time/SwissTime.hpp>
 #include <WordClock/WordClock.hpp>
 #include <config/ConfigWebServer.hpp>
 #include <wifi/WifiHost.hpp>
-
 
 // ============================================================================
 // OBJEKTE
@@ -13,24 +11,17 @@
 SwissTime swissTime;
 WordClock wordClock;
 ConfigWebServer configWebServer;
-
-WifiHost wifiHost(
-    180,    // Config-Portal Timeout: 180 Sekunden
-    30      // WLAN-Verbindungs-Timeout: 30 Sekunden
-);
-
+WifiHost wifiHost(180, 30);
 
 // ============================================================================
 // TIMING
 // ============================================================================
 
 unsigned long lastTimeUpdate = 0;
-
-const unsigned long TIME_UPDATE_INTERVAL = 60000UL;   // 1 Minute
+const unsigned long TIME_UPDATE_INTERVAL = 60000UL;
 
 int lastDisplayedMinute = -1;
 int lastDisplayedHour = -1;
-
 
 // ============================================================================
 // DISPLAY AKTUALISIEREN
@@ -56,7 +47,6 @@ void updateDisplay()
         swissTime.s
     );
 }
-
 
 // ============================================================================
 // AUF NTP-ZEIT WARTEN
@@ -93,13 +83,49 @@ bool waitForValidTime()
         delay(500);
     }
 
-    Serial.println(
-        "[MAIN] NTP-Zeit konnte nicht ermittelt werden"
-    );
-
+    Serial.println("[MAIN] NTP-Zeit konnte nicht ermittelt werden");
     return false;
 }
 
+// ============================================================================
+// CONFIG WEBSERVER BEARBEITEN
+// ============================================================================
+
+void handleConfig()
+{
+    if (!configWebServer.isActive()) {
+        return;
+    }
+
+    bool wasActive = configWebServer.isActive();
+
+    configWebServer.handle();
+
+    // ---------------------------------------------------------
+    // Konfiguration geändert
+    // ---------------------------------------------------------
+    if (configWebServer.hasConfigChanged()) {
+        Serial.println("[MAIN] Konfiguration wurde geaendert");
+
+        if (swissTime.h >= 0 && swissTime.m >= 0) {
+            updateDisplay();
+        }
+
+        configWebServer.clearConfigChanged();
+    }
+
+    // ---------------------------------------------------------
+    // Webserver wurde durch Timeout oder /close beendet
+    // ---------------------------------------------------------
+    if (wasActive && !configWebServer.isActive()) {
+        Serial.println("[MAIN] Config-Webserver beendet");
+
+        // Config-AP ebenfalls beenden
+        wifiHost.stopAccessPoint();
+
+        Serial.println("[MAIN] Config-AP beendet");
+    }
+}
 
 // ============================================================================
 // SETUP
@@ -109,24 +135,26 @@ void setup()
 {
     Serial.begin(74880);
     delay(500);
-    // -------------------------------------------------------------------------
-    // Led auschalten
-    // -------------------------------------------------------------------------
+
+    // =========================================================================
+    // LED AUS
+    // =========================================================================
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, HIGH);
 
-    // -------------------------------------------------------------------------
-    // Konfiguration aus EEPROM laden
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // KONFIGURATION LADEN
+    // =========================================================================
     configWebServer.begin();
 
+    // =========================================================================
+    // HAUS-WLAN VERBINDEN
+    // =========================================================================
+    Serial.println();
+    Serial.println("[MAIN] Versuche Haus-WLAN...");
 
-    // -------------------------------------------------------------------------
-    // WLAN verbinden
-    // -------------------------------------------------------------------------
     bool wifiError = wifiHost.connectToWifi();
-
-    if (wifiError) {
+    if (!wifiError) {
         Serial.println("[MAIN] WLAN verbunden");
         Serial.print("[MAIN] IP: ");
         Serial.println(WiFi.localIP());
@@ -135,48 +163,54 @@ void setup()
         Serial.println("[MAIN] Keine WLAN-Verbindung");
     }
 
+    // =========================================================================
+    // NTP-ZEIT
+    // =========================================================================
 
-    // -------------------------------------------------------------------------
-    // NTP-Zeit holen
-    // -------------------------------------------------------------------------
     bool timeError = true;
 
     if (!wifiError) {
         timeError = !waitForValidTime();
     }
     else {
-        Serial.println("[MAIN] Keine WLAN-Verbindung -> keine NTP-Zeit");
+        Serial.println(
+            "[MAIN] Keine WLAN-Verbindung -> keine NTP-Zeit"
+        );
     }
 
+    // =========================================================================
+    // ZEIT ANZEIGEN
+    // =========================================================================
 
-    // -------------------------------------------------------------------------
-    // Zeit anzeigen
-    // -------------------------------------------------------------------------
     if (!timeError) {
         updateDisplay();
     }
     else {
-        Serial.println("[MAIN] Keine gueltige Zeit -> Anzeige wird nicht aktualisiert");
+        Serial.println(
+            "[MAIN] Keine gueltige Zeit -> Anzeige wird nicht aktualisiert"
+        );
     }
 
+    // =========================================================================
+    // CONFIG AP + WEBSERVER
+    // =========================================================================
+    Serial.println();
+    Serial.println("[MAIN] Starte Konfigurations-AP...");
 
-    // -------------------------------------------------------------------------
-    // Webserver fuer Auswahl starten
-    // -------------------------------------------------------------------------
-    if (!wifiError) {
-        configWebServer.start();
-        Serial.println("[MAIN] Config Webserver läuft");
-    }
-    else {
-        Serial.println("[MAIN] Auswahl nicht gestartet, da WLAN nicht verbunden ist");
-    }
+    configWebServer.start();
 
-    // -------------------------------------------------------------------------
-    // Timer starten
-    // -------------------------------------------------------------------------
+    Serial.println("[MAIN] Konfigurationsseite bereit");
+    Serial.println("[MAIN] Verbinde dich mit WLAN: WordClock");
+
+    Serial.print("[MAIN] Oeffne: http://");
+    Serial.print(WiFi.softAPIP());
+    Serial.println("/");
+
+    // =========================================================================
+    // TIMER
+    // =========================================================================
     lastTimeUpdate = millis();
 }
-
 
 // ============================================================================
 // LOOP
@@ -184,35 +218,25 @@ void setup()
 
 void loop()
 {
-    // -------------------------------------------------------------------------
-    // Webserver während der Auswahl bedienen
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // CONFIG WEBSERVER
+    // =========================================================================
+    handleConfig();
+
+    // =========================================================================
+    // SOLANGE CONFIG AKTIV IST NICHT BLOCKIEREN
+    // =========================================================================
     if (configWebServer.isActive()) {
-        configWebServer.handle();
-    }
-
-    // -------------------------------------------------------------------------
-    // Konfiguration geändert?
-    // -------------------------------------------------------------------------
-    if (configWebServer.hasConfigChanged()) {
-        Serial.println("[MAIN] Konfiguration wurde geaendert");
-        updateDisplay();
-        configWebServer.clearConfigChanged();
-    }
-
-    // -------------------------------------------------------------------------
-    // Wenn Auswahl aktiv ist, nicht auf die nächste Minute blockieren
-    // -------------------------------------------------------------------------
-    if (configWebServer.isActive()){
         yield();
+        delay(10);
         return;
     }
 
-    // -------------------------------------------------------------------------
-    // Normalbetrieb:
-    // Zeit holen
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // NORMALBETRIEB
+    // =========================================================================
     bool timeError = swissTime.getTime();
+
     if (timeError) {
         Serial.println("[MAIN] Keine gueltige Zeit");
         wordClock.showNoInternet();
@@ -220,25 +244,36 @@ void loop()
         return;
     }
 
-    // -------------------------------------------------------------------------
-    // Nachts ausschalten
-    // -------------------------------------------------------------------------
-    if ((swissTime.h >= configWebServer.getSleepHour()) || (swissTime.h < configWebServer.getWakeupHour())) {
+    // =========================================================================
+    // NACHTBETRIEB
+    // =========================================================================
+    int currentMinutes = swissTime.h * 60 + swissTime.m;
+    int sleepMinutes = configWebServer.getSleepHour() * 60 + configWebServer.getSleepMinute();
+    int wakeupMinutes = configWebServer.getWakeupHour() * 60 + configWebServer.getWakeupMinute();
+    bool sleeping;
+    if (sleepMinutes > wakeupMinutes) {
+        // Schlafzeit über Mitternacht, z.B. 23:30 -> 06:30
+        sleeping = currentMinutes >= sleepMinutes || currentMinutes < wakeupMinutes;
+    }
+    else {
+        // Schlafzeit innerhalb eines Tages, z.B. 01:00 -> 06:30
+        sleeping = currentMinutes >= sleepMinutes && currentMinutes < wakeupMinutes;
+    }
+
+    if (sleeping) {
         wordClock.allOff();
-        // Im Schlafbetrieb nur einmal pro Minute prüfen.
-        delay(60000);
+        delay(1000);
         return;
     }
 
-    // -------------------------------------------------------------------------
-    // Uhrzeit anzeigen
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // UHRZEIT ANZEIGEN
+    // =========================================================================
     updateDisplay();
 
-
-    // -------------------------------------------------------------------------
-    // Auf nächste Minuten-Grenze warten
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // AUF NÄCHSTE MINUTE WARTEN
+    // =========================================================================
     swissTime.awaitNextMinuteBoundary();
     yield();
 }

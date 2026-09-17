@@ -1,9 +1,8 @@
-#ifndef WifiHost_HPP
-#define WifiHost_HPP
+#ifndef WIFIHOST_HPP
+#define WIFIHOST_HPP
 
 #include <Arduino.h>
-
-#include <WifiClientSecure.h>
+#include <ESP8266WiFi.h>
 #include <WiFiManager.h>
 
 
@@ -16,9 +15,66 @@ public:
         int connectTimeout
     );
 
-    bool connectToWifi(void);
 
-    bool disconnectFromWifi(void);
+    // ------------------------------------------------------------------------
+    // Mit gespeichertem WLAN verbinden
+    //
+    // Rückgabe:
+    // false = WLAN verbunden
+    // true  = keine Verbindung
+    // ------------------------------------------------------------------------
+
+    bool connectToWifi();
+
+
+    // ------------------------------------------------------------------------
+    // WLAN trennen
+    // ------------------------------------------------------------------------
+
+    bool disconnectFromWifi();
+
+
+    // ------------------------------------------------------------------------
+    // Eigenen Konfigurations-Access-Point starten
+    // ------------------------------------------------------------------------
+
+    bool startAccessPoint();
+
+
+    // ------------------------------------------------------------------------
+    // Access Point stoppen
+    // ------------------------------------------------------------------------
+
+    bool stopAccessPoint();
+
+
+    // ------------------------------------------------------------------------
+    // Ist der AP aktiv?
+    // ------------------------------------------------------------------------
+
+    bool isAccessPointActive() const;
+
+
+    // ------------------------------------------------------------------------
+    // Aktuelle SSID des verbundenen WLAN
+    // ------------------------------------------------------------------------
+
+    String getSSID() const;
+
+
+    // ------------------------------------------------------------------------
+    // IP-Adresse des verbundenen WLAN
+    // ------------------------------------------------------------------------
+
+    IPAddress getLocalIP() const;
+
+
+    // ------------------------------------------------------------------------
+    // IP-Adresse des Konfigurations-AP
+    // ------------------------------------------------------------------------
+
+    IPAddress getAccessPointIP() const;
+
 
 private:
 
@@ -26,6 +82,8 @@ private:
 
     int this_configPortalTimeout;
     int this_connectTimeout;
+
+    bool accessPointActive;
 };
 
 #endif
