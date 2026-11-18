@@ -19,12 +19,31 @@ public:
     // ------------------------------------------------------------------------
     // Mit gespeichertem WLAN verbinden
     //
+    // ssid/password = WLAN-Daten aus der Konfigurationsseite (EEPROM).
+    // Ist die SSID leer, werden die im ESP-SDK gespeicherten Daten verwendet.
+    //
     // Rückgabe:
     // false = WLAN verbunden
     // true  = keine Verbindung
     // ------------------------------------------------------------------------
 
-    bool connectToWifi();
+    bool connectToWifi(
+        const String& ssid,
+        const String& password
+    );
+
+
+    // ------------------------------------------------------------------------
+    // Verbindung im Normalbetrieb halten
+    //
+    // Blockiert nicht. Ist das WLAN weg, wird höchstens alle
+    // RECONNECT_INTERVAL_MS ein neuer Verbindungsversuch gestartet.
+    // ------------------------------------------------------------------------
+
+    void maintainConnection(
+        const String& ssid,
+        const String& password
+    );
 
 
     // ------------------------------------------------------------------------
@@ -78,7 +97,22 @@ public:
 
 private:
 
+    static const unsigned long RECONNECT_INTERVAL_MS = 60000UL;
+
+
+    // ------------------------------------------------------------------------
+    // Verbindungsaufbau starten (ohne Warten)
+    // ------------------------------------------------------------------------
+
+    void beginConnection(
+        const String& ssid,
+        const String& password
+    );
+
+
     WiFiManager manager;
+
+    unsigned long lastReconnectAttempt;
 
     int this_configPortalTimeout;
     int this_connectTimeout;

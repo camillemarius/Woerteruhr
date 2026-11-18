@@ -9,7 +9,8 @@ WifiHost::WifiHost(
     int configPortalTimeout,
     int connectTimeout
 )
-    : this_configPortalTimeout(configPortalTimeout),
+    : lastReconnectAttempt(0),
+      this_configPortalTimeout(configPortalTimeout),
       this_connectTimeout(connectTimeout),
       accessPointActive(false)
 {
@@ -17,10 +18,42 @@ WifiHost::WifiHost(
 
 
 // ============================================================================
+// VERBINDUNGSAUFBAU STARTEN
+//
+// Der ESP8266-Core speichert WLAN-Daten seit Version 3 standardmässig nicht
+// mehr im Flash (WiFi.persistent ist false). WiFi.begin() ohne Daten kennt
+// deshalb nach einem Neustart die auf der Konfigurationsseite gesetzten
+// Daten nicht. Darum werden hier die Daten aus dem EEPROM übergeben.
+// ============================================================================
+
+void WifiHost::beginConnection(
+    const String& ssid,
+    const String& password
+)
+{
+    if (ssid.length() > 0)
+    {
+        WiFi.begin(
+            ssid.c_str(),
+            password.c_str()
+        );
+    }
+    else
+    {
+        // Keine Daten im EEPROM: im SDK gespeicherte Daten verwenden
+        WiFi.begin();
+    }
+}
+
+
+// ============================================================================
 // WLAN VERBINDEN
 // ============================================================================
 
-bool WifiHost::connectToWifi()
+bool WifiHost::connectToWifi(
+    const String& ssid,
+    const String& password
+)
 {
     Serial.println();
     Serial.println(
@@ -53,10 +86,19 @@ bool WifiHost::connectToWifi()
     WiFi.mode(WIFI_STA);
 
 
-    WiFi.begin();
+    // Nach einem Verbindungsabbruch selbst neu verbinden
+    WiFi.setAutoReconnect(true);
+
+
+    beginConnection(
+        ssid,
+        password
+    );
 
 
     unsigned long start = millis();
+
+    lastReconnectAttempt = start;
 
 
     while (
@@ -109,6 +151,49 @@ bool WifiHost::connectToWifi()
 
 
     return true;
+}
+
+
+// ============================================================================
+// VERBINDUNG HALTEN
+//
+// Nach einem WLAN-Ausfall (z.B. Router-Neustart oder Stromausfall, bei dem
+// der ESP schneller startet als der Router) wird regelmässig ein neuer
+// Verbindungsversuch gestartet, bis das WLAN wieder da ist.
+// ============================================================================
+
+void WifiHost::maintainConnection(
+    const String& ssid,
+    const String& password
+)
+{
+    if (WiFi.status() == WL_CONNECTED)
+    {
+        return;
+    }
+
+
+    unsigned long now = millis();
+
+
+    if (now - lastReconnectAttempt < RECONNECT_INTERVAL_MS)
+    {
+        return;
+    }
+
+
+    lastReconnectAttempt = now;
+
+
+    Serial.println(
+        "[WIFI] Keine Verbindung -> neuer Verbindungsversuch"
+    );
+
+
+    beginConnection(
+        ssid,
+        password
+    );
 }
 
 

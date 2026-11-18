@@ -153,7 +153,10 @@ void setup()
     Serial.println();
     Serial.println("[MAIN] Versuche Haus-WLAN...");
 
-    bool wifiError = wifiHost.connectToWifi();
+    bool wifiError = wifiHost.connectToWifi(
+        configWebServer.getWifiSSID(),
+        configWebServer.getWifiPassword()
+    );
     if (!wifiError) {
         Serial.println("[MAIN] WLAN verbunden");
         Serial.print("[MAIN] IP: ");
@@ -231,6 +234,14 @@ void loop()
         delay(10);
         return;
     }
+
+    // =========================================================================
+    // WLAN NACH AUSFALL WIEDER VERBINDEN
+    // =========================================================================
+    wifiHost.maintainConnection(
+        configWebServer.getWifiSSID(),
+        configWebServer.getWifiPassword()
+    );
 
     // =========================================================================
     // NORMALBETRIEB
